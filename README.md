@@ -12,10 +12,10 @@ Este índice proporciona enlaces rápidos a todas las secciones de comandos de c
 - [Comandos Básicos de Linux](/os/linux/basic_commands.md)
 
 ### Windows
-Próximamente
+- [Comandos de Windows (CMD y PowerShell)](/os/windows/windows_commands.md)
 
 ### macOS
-Próximamente
+- [Comandos de macOS (Terminal)](/os/macos/macos_commands.md)
 
 ## Lenguajes de Programación
 
