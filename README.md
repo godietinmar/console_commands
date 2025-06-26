@@ -94,10 +94,10 @@ Este índice proporciona enlaces rápidos a todas las secciones de comandos de c
 ## Servidores Web y Cloud
 
 ### AWS
-Próximamente
+- [Comandos de AWS CLI](/web_cloud/aws/aws_commands.md)
 
 ### Azure
-Próximamente
+- [Comandos de Azure CLI](/web_cloud/azure/azure_commands.md)
 
 ### Google Cloud Platform
-Próximamente
+- [Comandos de gcloud CLI](/web_cloud/gcp/gcp_commands.md)
