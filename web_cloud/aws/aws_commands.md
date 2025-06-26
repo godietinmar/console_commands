@@ -636,9 +636,389 @@ aws ec2 describe-instances \
 
 ---
 
-## 📚 Recursos Adicionales
+## AWS AI/ML Services
 
-- [Documentación oficial de AWS CLI](https://docs.aws.amazon.com/cli/)
-- [Referencia de comandos AWS CLI](https://awscli.amazonaws.com/v2/documentation/api/latest/index.html)
-- [AWS CLI GitHub Repository](https://github.com/aws/aws-cli)
-- [Ejemplos de uso de AWS CLI](https://docs.aws.amazon.com/cli/latest/userguide/cli-usage-examples.html)
+### Amazon SageMaker
+```bash
+# Crear notebook instance
+aws sagemaker create-notebook-instance \
+    --notebook-instance-name my-notebook \
+    --instance-type ml.t3.medium \
+    --role-arn arn:aws:iam::123456789012:role/MySageMakerRole
+
+# Listar notebook instances
+aws sagemaker list-notebook-instances
+
+# Iniciar notebook instance
+aws sagemaker start-notebook-instance \
+    --notebook-instance-name my-notebook
+
+# Detener notebook instance
+aws sagemaker stop-notebook-instance \
+    --notebook-instance-name my-notebook
+
+# Crear training job
+aws sagemaker create-training-job \
+    --training-job-name my-training-job \
+    --algorithm-specification TrainingImage=382416733822.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest,TrainingInputMode=File \
+    --role-arn arn:aws:iam::123456789012:role/MySageMakerRole \
+    --input-data-config file://input-data-config.json \
+    --output-data-config S3OutputPath=s3://my-bucket/output \
+    --resource-config InstanceType=ml.m5.large,InstanceCount=1,VolumeSizeInGB=10 \
+    --stopping-condition MaxRuntimeInSeconds=3600
+
+# Listar training jobs
+aws sagemaker list-training-jobs
+
+# Crear modelo
+aws sagemaker create-model \
+    --model-name my-model \
+    --primary-container Image=382416733822.dkr.ecr.us-east-1.amazonaws.com/xgboost:latest,ModelDataUrl=s3://my-bucket/model.tar.gz \
+    --execution-role-arn arn:aws:iam::123456789012:role/MySageMakerRole
+
+# Crear endpoint configuration
+aws sagemaker create-endpoint-config \
+    --endpoint-config-name my-endpoint-config \
+    --production-variants VariantName=AllTraffic,ModelName=my-model,InitialInstanceCount=1,InstanceType=ml.t2.medium
+
+# Crear endpoint
+aws sagemaker create-endpoint \
+    --endpoint-name my-endpoint \
+    --endpoint-config-name my-endpoint-config
+
+# Listar endpoints
+aws sagemaker list-endpoints
+```
+
+### Amazon Bedrock
+```bash
+# Listar modelos disponibles
+aws bedrock list-foundation-models
+
+# Listar custom models
+aws bedrock list-custom-models
+
+# Crear job de fine-tuning
+aws bedrock create-model-customization-job \
+    --job-name my-fine-tuning-job \
+    --custom-model-name my-custom-model \
+    --role-arn arn:aws:iam::123456789012:role/BedrockRole \
+    --base-model-identifier anthropic.claude-v2 \
+    --training-data-config S3Uri=s3://my-bucket/training-data \
+    --output-data-config S3Uri=s3://my-bucket/output
+
+# Invocar modelo (usando AWS CLI con Bedrock Runtime)
+aws bedrock-runtime invoke-model \
+    --model-id anthropic.claude-v2 \
+    --body '{"prompt":"Human: Hello\n\nAssistant:","max_tokens_to_sample":100}' \
+    --content-type application/json \
+    output.json
+
+# Listar jobs de fine-tuning
+aws bedrock list-model-customization-jobs
+```
+
+### Amazon Rekognition
+```bash
+# Detectar etiquetas en imagen
+aws rekognition detect-labels \
+    --image S3Object='{Bucket=my-bucket,Name=image.jpg}' \
+    --max-labels 10 \
+    --min-confidence 75
+
+# Detectar caras
+aws rekognition detect-faces \
+    --image S3Object='{Bucket=my-bucket,Name=image.jpg}' \
+    --attributes ALL
+
+# Comparar caras
+aws rekognition compare-faces \
+    --source-image S3Object='{Bucket=my-bucket,Name=source.jpg}' \
+    --target-image S3Object='{Bucket=my-bucket,Name=target.jpg}'
+
+# Detectar texto
+aws rekognition detect-text \
+    --image S3Object='{Bucket=my-bucket,Name=document.jpg}'
+
+# Crear colección de caras
+aws rekognition create-collection \
+    --collection-id my-face-collection
+
+# Indexar cara en colección
+aws rekognition index-faces \
+    --collection-id my-face-collection \
+    --image S3Object='{Bucket=my-bucket,Name=person.jpg}' \
+    --external-image-id person-001
+
+# Buscar caras
+aws rekognition search-faces-by-image \
+    --collection-id my-face-collection \
+    --image S3Object='{Bucket=my-bucket,Name=search.jpg}' \
+    --max-faces 5
+```
+
+### Amazon Textract
+```bash
+# Detectar texto en documento
+aws textract detect-document-text \
+    --document S3Object='{Bucket=my-bucket,Name=document.pdf}'
+
+# Analizar documento (formularios y tablas)
+aws textract analyze-document \
+    --document S3Object='{Bucket=my-bucket,Name=form.pdf}' \
+    --feature-types TABLES FORMS
+
+# Iniciar análisis asíncrono
+aws textract start-document-analysis \
+    --document-location S3Object='{Bucket=my-bucket,Name=large-document.pdf}' \
+    --feature-types TABLES FORMS
+
+# Obtener resultados de análisis asíncrono
+aws textract get-document-analysis \
+    --job-id job-id-from-start-command
+```
+
+### Amazon Comprehend
+```bash
+# Detectar sentimiento
+aws comprehend detect-sentiment \
+    --text "I love this product!" \
+    --language-code en
+
+# Detectar entidades
+aws comprehend detect-entities \
+    --text "Amazon Web Services is based in Seattle" \
+    --language-code en
+
+# Detectar frases clave
+aws comprehend detect-key-phrases \
+    --text "Machine learning is transforming the way we work" \
+    --language-code en
+
+# Detectar idioma
+aws comprehend detect-dominant-language \
+    --text "Bonjour, comment allez-vous?"
+
+# Análisis de sentimiento por lotes
+aws comprehend start-sentiment-detection-job \
+    --input-data-config S3Uri=s3://my-bucket/input/,InputFormat=ONE_DOC_PER_LINE \
+    --output-data-config S3Uri=s3://my-bucket/output/ \
+    --data-access-role-arn arn:aws:iam::123456789012:role/ComprehendRole \
+    --language-code en \
+    --job-name sentiment-analysis-job
+
+# Listar jobs de análisis
+aws comprehend list-sentiment-detection-jobs
+```
+
+### Amazon Polly
+```bash
+# Sintetizar voz
+aws polly synthesize-speech \
+    --output-format mp3 \
+    --voice-id Joanna \
+    --text "Hello, this is Amazon Polly speaking" \
+    speech.mp3
+
+# Listar voces disponibles
+aws polly describe-voices
+
+# Sintetizar con SSML
+aws polly synthesize-speech \
+    --output-format mp3 \
+    --voice-id Matthew \
+    --text-type ssml \
+    --text '<speak>Hello <break time="2s"/> World!</speak>' \
+    ssml-speech.mp3
+
+# Crear lexicon personalizado
+aws polly put-lexicon \
+    --name my-lexicon \
+    --content file://lexicon.xml
+
+# Listar lexicons
+aws polly list-lexicons
+```
+
+### Amazon Transcribe
+```bash
+# Iniciar job de transcripción
+aws transcribe start-transcription-job \
+    --transcription-job-name my-transcription \
+    --language-code en-US \
+    --media-format mp3 \
+    --media MediaFileUri=s3://my-bucket/audio.mp3
+
+# Obtener resultado de transcripción
+aws transcribe get-transcription-job \
+    --transcription-job-name my-transcription
+
+# Listar jobs de transcripción
+aws transcribe list-transcription-jobs
+
+# Transcripción en tiempo real (streaming)
+aws transcribe start-stream-transcription \
+    --language-code en-US \
+    --media-encoding pcm \
+    --sample-rate 16000
+```
+
+### Amazon Translate
+```bash
+# Traducir texto
+aws translate translate-text \
+    --source-language-code en \
+    --target-language-code es \
+    --text "Hello, how are you?"
+
+# Traducir documento
+aws translate start-text-translation-job \
+    --job-name translate-job \
+    --source-language-code en \
+    --target-language-codes es fr de \
+    --input-data-config S3Uri=s3://my-bucket/input/,ContentType=text/plain \
+    --output-data-config S3Uri=s3://my-bucket/output/ \
+    --data-access-role-arn arn:aws:iam::123456789012:role/TranslateRole
+
+# Obtener resultado de traducción por lotes
+aws translate describe-text-translation-job \
+    --job-id job-id-from-start-command
+
+# Listar jobs de traducción
+aws translate list-text-translation-jobs
+```
+
+### Amazon Lex
+```bash
+# Crear bot
+aws lex put-bot \
+    --name OrderPizza \
+    --description "Bot to order pizza" \
+    --intents Intent=OrderPizza \
+    --clarification-prompt Messages='[{Content="I did not understand, can you repeat?",ContentType="PlainText"}]' \
+    --abortion-statement Messages='[{Content="Sorry, I could not understand. Goodbye.",ContentType="PlainText"}]' \
+    --idle-session-ttl-in-seconds 300 \
+    --data-privacy ChildDirected=false \
+    --locale en-US
+
+# Crear intent
+aws lex put-intent \
+    --name OrderPizza \
+    --description "Intent to order pizza" \
+    --sample-utterances "I would like to order a pizza" "Can I get a pizza" \
+    --fulfillment-activity Type=ReturnIntent
+
+# Construir bot
+aws lex put-bot \
+    --name OrderPizza \
+    --intents Intent=OrderPizza \
+    --clarification-prompt Messages='[{Content="What can I help you with?",ContentType="PlainText"}]' \
+    --abortion-statement Messages='[{Content="Sorry, I could not understand.",ContentType="PlainText"}]' \
+    --idle-session-ttl-in-seconds 300 \
+    --data-privacy ChildDirected=false \
+    --locale en-US
+
+# Probar bot
+aws lex post-text \
+    --bot-name OrderPizza \
+    --bot-alias "\$LATEST" \
+    --user-id test-user \
+    --input-text "I want to order a pizza"
+```
+
+### Amazon Kendra
+```bash
+# Crear índice
+aws kendra create-index \
+    --name MyIndex \
+    --description "My search index" \
+    --role-arn arn:aws:iam::123456789012:role/KendraRole
+
+# Crear data source
+aws kendra create-data-source \
+    --index-id index-id \
+    --name MyDataSource \
+    --type S3 \
+    --configuration S3Configuration='{BucketName=my-bucket,InclusionPrefixes=[documents/]}' \
+    --role-arn arn:aws:iam::123456789012:role/KendraRole
+
+# Sincronizar data source
+aws kendra start-data-source-sync-job \
+    --id data-source-id \
+    --index-id index-id
+
+# Hacer consulta
+aws kendra query \
+    --index-id index-id \
+    --query-text "What is machine learning?"
+
+# Listar índices
+aws kendra list-indices
+```
+
+### Scripts de Automatización para AI/ML
+
+#### Script de Análisis de Imágenes
+```bash
+#!/bin/bash
+# analyze-images.sh
+BUCKET="my-images-bucket"
+PREFIX="uploads/"
+
+# Listar imágenes en S3
+aws s3 ls s3://$BUCKET/$PREFIX --recursive | grep -E '\.(jpg|jpeg|png)$' | while read -r line; do
+    # Extraer nombre del archivo
+    IMAGE=$(echo $line | awk '{print $4}')
+    
+    echo "Analyzing image: $IMAGE"
+    
+    # Detectar etiquetas
+    aws rekognition detect-labels \
+        --image S3Object='{Bucket='$BUCKET',Name='$IMAGE'}' \
+        --max-labels 5 \
+        --min-confidence 80
+    
+    echo "---"
+done
+```
+
+#### Script de Transcripción Masiva
+```bash
+#!/bin/bash
+# batch-transcribe.sh
+BUCKET="my-audio-bucket"
+PREFIX="recordings/"
+
+# Listar archivos de audio
+aws s3 ls s3://$BUCKET/$PREFIX --recursive | grep -E '\.(mp3|wav|flac)$' | while read -r line; do
+    # Extraer nombre del archivo
+    AUDIO=$(echo $line | awk '{print $4}')
+    JOB_NAME=$(basename "$AUDIO" .mp3)
+    
+    echo "Starting transcription for: $AUDIO"
+    
+    # Iniciar job de transcripción
+    aws transcribe start-transcription-job \
+        --transcription-job-name "$JOB_NAME-$(date +%s)" \
+        --language-code en-US \
+        --media-format mp3 \
+        --media MediaFileUri=s3://$BUCKET/$AUDIO
+done
+```
+
+#### Script de Monitoreo de ML
+```bash
+#!/bin/bash
+# monitor-ml-services.sh
+echo "=== SageMaker Training Jobs ==="
+aws sagemaker list-training-jobs --output table
+
+echo "=== SageMaker Endpoints ==="
+aws sagemaker list-endpoints --output table
+
+echo "=== Transcription Jobs ==="
+aws transcribe list-transcription-jobs --output table
+
+echo "=== Translation Jobs ==="
+aws translate list-text-translation-jobs --output table
+```

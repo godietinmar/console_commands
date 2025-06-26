@@ -851,3 +851,760 @@ db.ventas.aggregate([
   }}
 ])
 ```
+
+## MongoDB for AI/ML Applications
+
+### Vector Similarity Search
+
+#### Storing and Querying Embeddings
+```javascript
+// Crear colección para embeddings
+use ai_database
+
+// Crear índice vectorial para búsqueda de similaridad
+db.embeddings.createIndex({
+  "vector": "2dsphere"
+})
+
+// Insertar documentos con embeddings
+db.embeddings.insertMany([
+  {
+    _id: ObjectId(),
+    text: "Machine learning is a subset of artificial intelligence",
+    vector: [0.1, 0.2, -0.3, 0.4, -0.1, 0.8, 0.2, -0.5],
+    metadata: {
+      source: "textbook",
+      category: "AI",
+      timestamp: new Date()
+    }
+  },
+  {
+    _id: ObjectId(),
+    text: "Deep learning uses neural networks with multiple layers",
+    vector: [0.2, 0.1, -0.2, 0.5, -0.2, 0.7, 0.3, -0.4],
+    metadata: {
+      source: "article",
+      category: "ML",
+      timestamp: new Date()
+    }
+  }
+])
+
+// Búsqueda de similaridad usando agregación
+db.embeddings.aggregate([
+  {
+    $addFields: {
+      similarity: {
+        $let: {
+          vars: {
+            queryVector: [0.15, 0.15, -0.25, 0.45, -0.15, 0.75, 0.25, -0.45]
+          },
+          in: {
+            $divide: [
+              {
+                $reduce: {
+                  input: { $range: [0, { $size: "$vector" }] },
+                  initialValue: 0,
+                  in: {
+                    $add: [
+                      "$$value",
+                      {
+                        $multiply: [
+                          { $arrayElemAt: ["$vector", "$$this"] },
+                          { $arrayElemAt: ["$$vars.queryVector", "$$this"] }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                $multiply: [
+                  {
+                    $sqrt: {
+                      $reduce: {
+                        input: "$vector",
+                        initialValue: 0,
+                        in: { $add: ["$$value", { $multiply: ["$$this", "$$this"] }] }
+                      }
+                    }
+                  },
+                  {
+                    $sqrt: {
+                      $reduce: {
+                        input: "$$vars.queryVector",
+                        initialValue: 0,
+                        in: { $add: ["$$value", { $multiply: ["$$this", "$$this"] }] }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  { $sort: { similarity: -1 } },
+  { $limit: 5 }
+])
+```
+
+#### Text Embeddings with MongoDB
+```javascript
+// Colección para almacenar embeddings de texto
+db.text_embeddings.createIndex({ "embedding": "2dsphere" })
+
+// Función para calcular distancia coseno
+function cosineSimilarity(vecA, vecB) {
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+  
+  for (let i = 0; i < vecA.length; i++) {
+    dotProduct += vecA[i] * vecB[i];
+    normA += vecA[i] * vecA[i];
+    normB += vecB[i] * vecB[i];
+  }
+  
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+}
+
+// Insertar documentos con embeddings
+db.text_embeddings.insertMany([
+  {
+    document_id: "doc_001",
+    text: "Python is a programming language",
+    embedding: Array.from({length: 384}, () => Math.random() - 0.5),
+    metadata: {
+      language: "en",
+      category: "programming",
+      tokens: 6
+    }
+  },
+  {
+    document_id: "doc_002", 
+    text: "JavaScript is used for web development",
+    embedding: Array.from({length: 384}, () => Math.random() - 0.5),
+    metadata: {
+      language: "en",
+      category: "programming",
+      tokens: 6
+    }
+  }
+])
+
+// Búsqueda semántica
+db.text_embeddings.find({
+  metadata: { category: "programming" }
+}).forEach(doc => {
+  // En una aplicación real, calcularías la similitud aquí
+  print(`${doc.document_id}: ${doc.text}`)
+})
+```
+
+### Machine Learning Model Storage
+
+#### Model Metadata and Versioning
+```javascript
+// Colección para metadatos de modelos ML
+use ml_models
+
+db.models.createIndex({ "name": 1, "version": 1 }, { unique: true })
+db.models.createIndex({ "created_at": -1 })
+db.models.createIndex({ "performance.accuracy": -1 })
+
+// Insertar metadata de modelo
+db.models.insertOne({
+  name: "sentiment_classifier",
+  version: "1.0.0",
+  algorithm: "Random Forest",
+  framework: "scikit-learn",
+  hyperparameters: {
+    n_estimators: 100,
+    max_depth: 10,
+    random_state: 42
+  },
+  training_data: {
+    dataset: "imdb_reviews",
+    samples: 50000,
+    features: 10000,
+    train_split: 0.8
+  },
+  performance: {
+    accuracy: 0.89,
+    precision: 0.87,
+    recall: 0.91,
+    f1_score: 0.89,
+    auc: 0.94
+  },
+  artifacts: {
+    model_file: "s3://models/sentiment_classifier_v1.pkl",
+    vectorizer: "s3://models/tfidf_vectorizer_v1.pkl",
+    config: "s3://models/config_v1.json"
+  },
+  created_at: new Date(),
+  created_by: "data_scientist_001",
+  status: "active",
+  tags: ["nlp", "sentiment", "classification"]
+})
+
+// Buscar mejores modelos por métrica
+db.models.find({
+  name: "sentiment_classifier",
+  status: "active"
+}).sort({ "performance.accuracy": -1 }).limit(5)
+
+// Comparar versiones de modelo
+db.models.aggregate([
+  { $match: { name: "sentiment_classifier" } },
+  { $sort: { version: -1 } },
+  { $project: {
+    version: 1,
+    accuracy: "$performance.accuracy",
+    created_at: 1,
+    hyperparameters: 1
+  }}
+])
+
+// Actualizar estado del modelo
+db.models.updateOne(
+  { name: "sentiment_classifier", version: "1.0.0" },
+  { 
+    $set: { 
+      status: "deprecated",
+      deprecated_at: new Date(),
+      replaced_by: "1.1.0"
+    }
+  }
+)
+```
+
+### Training Data Management
+
+#### Dataset Storage and Lineage
+```javascript
+// Colección para datasets de entrenamiento
+use training_data
+
+db.datasets.createIndex({ "name": 1, "version": 1 }, { unique: true })
+db.datasets.createIndex({ "created_at": -1 })
+db.datasets.createIndex({ "tags": 1 })
+
+// Insertar dataset
+db.datasets.insertOne({
+  name: "customer_reviews",
+  version: "2.1.0",
+  description: "Customer product reviews for sentiment analysis",
+  schema: {
+    review_id: "string",
+    product_id: "string", 
+    customer_id: "string",
+    review_text: "string",
+    rating: "integer",
+    sentiment_label: "string",
+    created_date: "datetime"
+  },
+  statistics: {
+    total_records: 125000,
+    positive_samples: 67500,
+    negative_samples: 42500,
+    neutral_samples: 15000,
+    avg_text_length: 156,
+    languages: ["en", "es", "fr"]
+  },
+  data_sources: [
+    {
+      source: "ecommerce_platform",
+      contribution: 0.6,
+      date_range: {
+        start: ISODate("2023-01-01"),
+        end: ISODate("2023-12-31")
+      }
+    },
+    {
+      source: "survey_responses", 
+      contribution: 0.4,
+      date_range: {
+        start: ISODate("2023-06-01"),
+        end: ISODate("2023-12-31")
+      }
+    }
+  ],
+  preprocessing: {
+    steps: [
+      "text_cleaning",
+      "tokenization", 
+      "stopword_removal",
+      "stemming"
+    ],
+    tools: ["nltk", "spacy"],
+    parameters: {
+      min_length: 10,
+      max_length: 500,
+      language: "english"
+    }
+  },
+  quality_metrics: {
+    completeness: 0.98,
+    accuracy: 0.95,
+    consistency: 0.92,
+    duplicates_removed: 3420
+  },
+  storage: {
+    location: "s3://datasets/customer_reviews_v2.1.0/",
+    format: "parquet",
+    size_gb: 2.4,
+    partitioning: ["year", "month"]
+  },
+  created_at: new Date(),
+  created_by: "data_team",
+  tags: ["nlp", "sentiment", "ecommerce", "reviews"],
+  lineage: {
+    parent_datasets: ["raw_reviews_v1.0", "survey_data_v1.2"],
+    transformations: ["cleaning", "labeling", "augmentation"]
+  }
+})
+
+// Buscar datasets por tags
+db.datasets.find({ tags: { $in: ["nlp", "sentiment"] } })
+
+// Obtener lineage del dataset
+db.datasets.aggregate([
+  { $match: { name: "customer_reviews" } },
+  { $sort: { version: -1 } },
+  { $limit: 1 },
+  { $project: {
+    name: 1,
+    version: 1,
+    lineage: 1,
+    statistics: 1
+  }}
+])
+```
+
+### Experiment Tracking
+
+#### ML Experiments and Runs
+```javascript
+// Colección para experimentos ML
+use ml_experiments
+
+db.experiments.createIndex({ "name": 1 })
+db.experiments.createIndex({ "created_at": -1 })
+db.runs.createIndex({ "experiment_id": 1 })
+db.runs.createIndex({ "status": 1 })
+db.runs.createIndex({ "metrics.accuracy": -1 })
+
+// Crear experimento
+db.experiments.insertOne({
+  _id: ObjectId("64a1b2c3d4e5f6789012345a"),
+  name: "sentiment_analysis_optimization",
+  description: "Optimizing sentiment analysis model performance",
+  objective: "maximize_accuracy",
+  created_at: new Date(),
+  created_by: "ml_engineer_001",
+  status: "active",
+  tags: ["nlp", "optimization", "sentiment"]
+})
+
+// Registrar run de experimento
+db.runs.insertOne({
+  experiment_id: ObjectId("64a1b2c3d4e5f6789012345a"),
+  run_id: "run_001",
+  name: "rf_baseline",
+  algorithm: "RandomForestClassifier",
+  hyperparameters: {
+    n_estimators: 100,
+    max_depth: 10,
+    min_samples_split: 2,
+    random_state: 42
+  },
+  dataset: {
+    name: "customer_reviews",
+    version: "2.1.0",
+    train_size: 100000,
+    test_size: 25000
+  },
+  metrics: {
+    accuracy: 0.87,
+    precision: 0.85,
+    recall: 0.89,
+    f1_score: 0.87,
+    auc: 0.92,
+    training_time_seconds: 125.6,
+    inference_time_ms: 2.3
+  },
+  artifacts: {
+    model: "s3://experiments/run_001/model.pkl",
+    plots: ["s3://experiments/run_001/confusion_matrix.png"],
+    logs: "s3://experiments/run_001/training.log"
+  },
+  environment: {
+    python_version: "3.9.7",
+    packages: {
+      "scikit-learn": "1.0.2",
+      "pandas": "1.3.3",
+      "numpy": "1.21.0"
+    },
+    hardware: {
+      cpu_cores: 8,
+      memory_gb: 32,
+      gpu: null
+    }
+  },
+  started_at: new Date(),
+  finished_at: new Date(),
+  duration_seconds: 156,
+  status: "completed",
+  notes: "Baseline model with default parameters"
+})
+
+// Buscar mejores runs por métrica
+db.runs.find({
+  experiment_id: ObjectId("64a1b2c3d4e5f6789012345a"),
+  status: "completed"
+}).sort({ "metrics.accuracy": -1 }).limit(10)
+
+// Comparar hiperparámetros de top runs
+db.runs.aggregate([
+  { $match: { 
+    experiment_id: ObjectId("64a1b2c3d4e5f6789012345a"),
+    status: "completed"
+  }},
+  { $sort: { "metrics.accuracy": -1 } },
+  { $limit: 5 },
+  { $project: {
+    run_id: 1,
+    accuracy: "$metrics.accuracy",
+    hyperparameters: 1,
+    training_time: "$metrics.training_time_seconds"
+  }}
+])
+```
+
+### Real-time AI Data Processing
+
+#### Feature Store
+```javascript
+// Colección para feature store
+use feature_store
+
+db.features.createIndex({ "entity_id": 1, "feature_name": 1, "timestamp": -1 })
+db.features.createIndex({ "feature_group": 1 })
+db.features.createIndex({ "timestamp": -1 })
+
+// Insertar features en tiempo real
+db.features.insertMany([
+  {
+    entity_id: "user_12345",
+    feature_group: "user_behavior", 
+    feature_name: "avg_session_duration",
+    value: 285.6,
+    timestamp: new Date(),
+    metadata: {
+      computation_method: "rolling_7_days",
+      data_source: "user_sessions",
+      version: "1.0"
+    }
+  },
+  {
+    entity_id: "user_12345",
+    feature_group: "user_behavior",
+    feature_name: "total_purchases_30d", 
+    value: 3,
+    timestamp: new Date(),
+    metadata: {
+      computation_method: "count",
+      data_source: "purchase_events",
+      version: "1.0"
+    }
+  }
+])
+
+// Obtener features más recientes para una entidad
+db.features.aggregate([
+  { $match: { entity_id: "user_12345" } },
+  { $sort: { timestamp: -1 } },
+  { $group: {
+    _id: { 
+      entity_id: "$entity_id",
+      feature_name: "$feature_name"
+    },
+    latest_value: { $first: "$value" },
+    latest_timestamp: { $first: "$timestamp" },
+    feature_group: { $first: "$feature_group" }
+  }},
+  { $project: {
+    _id: 0,
+    entity_id: "$_id.entity_id",
+    feature_name: "$_id.feature_name",
+    value: "$latest_value",
+    timestamp: "$latest_timestamp",
+    feature_group: 1
+  }}
+])
+
+// Feature drift detection
+db.features.aggregate([
+  { $match: { 
+    feature_name: "avg_session_duration",
+    timestamp: { $gte: new Date(Date.now() - 7*24*60*60*1000) }
+  }},
+  { $group: {
+    _id: {
+      $dateToString: { 
+        format: "%Y-%m-%d",
+        date: "$timestamp"
+      }
+    },
+    avg_value: { $avg: "$value" },
+    std_dev: { $stdDevPop: "$value" },
+    count: { $sum: 1 }
+  }},
+  { $sort: { _id: 1 } }
+])
+```
+
+### Model Monitoring and Analytics
+
+#### Prediction Logging
+```javascript
+// Colección para logs de predicciones
+use model_monitoring
+
+db.predictions.createIndex({ "model_id": 1, "timestamp": -1 })
+db.predictions.createIndex({ "prediction_id": 1 }, { unique: true })
+db.predictions.createIndex({ "user_id": 1 })
+
+// Log de predicción en tiempo real
+db.predictions.insertOne({
+  prediction_id: "pred_" + new Date().getTime(),
+  model_id: "sentiment_classifier_v1.0.0",
+  user_id: "user_67890",
+  input_data: {
+    text: "This product is amazing! I love it.",
+    preprocessed_features: [0.1, 0.8, 0.2, -0.1, 0.9]
+  },
+  prediction: {
+    class: "positive",
+    confidence: 0.94,
+    probabilities: {
+      positive: 0.94,
+      negative: 0.03,
+      neutral: 0.03
+    }
+  },
+  metadata: {
+    request_id: "req_abc123",
+    api_version: "v2",
+    response_time_ms: 45,
+    model_version: "1.0.0",
+    feature_version: "2.1"
+  },
+  timestamp: new Date(),
+  feedback: null  // Se actualizará cuando se reciba feedback
+})
+
+// Monitoreo de distribución de predicciones
+db.predictions.aggregate([
+  { $match: { 
+    model_id: "sentiment_classifier_v1.0.0",
+    timestamp: { $gte: new Date(Date.now() - 24*60*60*1000) }
+  }},
+  { $group: {
+    _id: "$prediction.class",
+    count: { $sum: 1 },
+    avg_confidence: { $avg: "$prediction.confidence" }
+  }},
+  { $sort: { count: -1 } }
+])
+
+// Actualizar con feedback real
+db.predictions.updateOne(
+  { prediction_id: "pred_1672531200000" },
+  { 
+    $set: { 
+      feedback: {
+        actual_label: "positive",
+        correct: true,
+        user_rating: 5,
+        feedback_timestamp: new Date()
+      }
+    }
+  }
+)
+
+// Calcular accuracy en tiempo real
+db.predictions.aggregate([
+  { $match: { 
+    model_id: "sentiment_classifier_v1.0.0",
+    feedback: { $ne: null },
+    timestamp: { $gte: new Date(Date.now() - 7*24*60*60*1000) }
+  }},
+  { $project: {
+    correct: { $eq: ["$prediction.class", "$feedback.actual_label"] }
+  }},
+  { $group: {
+    _id: null,
+    total_predictions: { $sum: 1 },
+    correct_predictions: { $sum: { $cond: ["$correct", 1, 0] } }
+  }},
+  { $project: {
+    _id: 0,
+    total_predictions: 1,
+    correct_predictions: 1,
+    accuracy: { $divide: ["$correct_predictions", "$total_predictions"] }
+  }}
+])
+```
+
+### AI/ML Configuration and Settings
+
+#### Model Configuration Management
+```javascript
+// Colección para configuraciones de modelos
+use model_configs
+
+db.configs.createIndex({ "model_name": 1, "environment": 1 }, { unique: true })
+db.configs.createIndex({ "updated_at": -1 })
+
+// Configuración de modelo en producción
+db.configs.insertOne({
+  model_name: "recommendation_engine",
+  environment: "production",
+  version: "2.3.1",
+  config: {
+    inference: {
+      batch_size: 64,
+      max_latency_ms: 100,
+      timeout_seconds: 30,
+      retry_attempts: 3
+    },
+    preprocessing: {
+      text_normalization: true,
+      feature_scaling: "standard",
+      missing_value_strategy: "median"
+    },
+    postprocessing: {
+      confidence_threshold: 0.7,
+      max_recommendations: 10,
+      diversity_factor: 0.3
+    },
+    monitoring: {
+      log_predictions: true,
+      sample_rate: 0.1,
+      alert_thresholds: {
+        latency_ms: 200,
+        error_rate: 0.05,
+        confidence_drop: 0.1
+      }
+    }
+  },
+  feature_flags: {
+    enable_a_b_testing: true,
+    use_new_algorithm: false,
+    enable_caching: true
+  },
+  scaling: {
+    min_instances: 2,
+    max_instances: 10,
+    target_cpu_percent: 70,
+    scale_up_cooldown: 300,
+    scale_down_cooldown: 600
+  },
+  created_at: new Date(),
+  updated_at: new Date(),
+  updated_by: "ml_ops_team"
+})
+
+// Obtener configuración actual
+db.configs.findOne({
+  model_name: "recommendation_engine",
+  environment: "production"
+})
+
+// Actualizar configuración
+db.configs.updateOne(
+  { 
+    model_name: "recommendation_engine",
+    environment: "production"
+  },
+  { 
+    $set: { 
+      "config.inference.batch_size": 128,
+      "updated_at": new Date(),
+      "updated_by": "performance_team"
+    }
+  }
+)
+```
+
+### AI/ML Automation Scripts
+
+#### Model Deployment Pipeline
+```bash
+#!/bin/bash
+# MongoDB script para pipeline de deployment
+
+mongosh --eval "
+use ml_deployment
+
+// Registrar nuevo deployment
+db.deployments.insertOne({
+  model_name: 'sentiment_classifier',
+  version: '1.2.0',
+  environment: 'staging',
+  deployment_id: 'deploy_' + new Date().getTime(),
+  artifacts: {
+    model_file: 's3://models/sentiment_v1.2.0/model.pkl',
+    config_file: 's3://models/sentiment_v1.2.0/config.json',
+    requirements: 's3://models/sentiment_v1.2.0/requirements.txt'
+  },
+  health_checks: {
+    model_load: false,
+    prediction_test: false,
+    performance_test: false
+  },
+  metrics: {
+    deployment_time: null,
+    first_prediction_latency: null,
+    memory_usage_mb: null
+  },
+  status: 'deploying',
+  started_at: new Date(),
+  started_by: 'deployment_pipeline'
+})
+
+print('Deployment registered in MongoDB')
+"
+
+# Actualizar estado después de health checks
+mongosh --eval "
+use ml_deployment
+
+db.deployments.updateOne(
+  { 
+    model_name: 'sentiment_classifier',
+    version: '1.2.0',
+    environment: 'staging',
+    status: 'deploying'
+  },
+  {
+    \$set: {
+      'health_checks.model_load': true,
+      'health_checks.prediction_test': true,
+      'health_checks.performance_test': true,
+      'metrics.deployment_time': 45.2,
+      'metrics.first_prediction_latency': 23.1,
+      'metrics.memory_usage_mb': 512,
+      status: 'active',
+      completed_at: new Date()
+    }
+  }
+)
+
+print('Deployment completed and updated in MongoDB')
+"
+```

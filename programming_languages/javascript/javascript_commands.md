@@ -880,3 +880,829 @@ localStorage.clear();
 // Uso de sessionStorage (similar pero se pierde al cerrar pestaña)
 sessionStorage.setItem('token', 'abc123');
 ```
+
+## JavaScript AI/ML Commands
+
+### Machine Learning with TensorFlow.js
+
+#### TensorFlow.js Installation and Setup
+```bash
+# Instalar TensorFlow.js para Node.js
+npm install @tensorflow/tfjs-node
+
+# Para usar GPU (si está disponible)
+npm install @tensorflow/tfjs-node-gpu
+
+# Para aplicaciones web
+npm install @tensorflow/tfjs
+
+# Instalar utilidades adicionales
+npm install @tensorflow/tfjs-vis  # Para visualizaciones
+npm install @tensorflow/tfjs-data  # Para manejo de datos
+```
+
+#### Training Models with TensorFlow.js
+```bash
+# Crear script de entrenamiento básico
+node -e "
+const tf = require('@tensorflow/tfjs-node');
+
+// Crear datos sintéticos
+const trainData = tf.randomNormal([1000, 10]);
+const trainLabels = tf.randomUniform([1000, 1], 0, 2, 'int32');
+
+// Crear modelo
+const model = tf.sequential({
+  layers: [
+    tf.layers.dense({inputShape: [10], units: 64, activation: 'relu'}),
+    tf.layers.dropout({rate: 0.2}),
+    tf.layers.dense({units: 32, activation: 'relu'}),
+    tf.layers.dense({units: 1, activation: 'sigmoid'})
+  ]
+});
+
+// Compilar modelo
+model.compile({
+  optimizer: 'adam',
+  loss: 'binaryCrossentropy',
+  metrics: ['accuracy']
+});
+
+// Entrenar modelo
+async function trainModel() {
+  console.log('Training model...');
+  const history = await model.fit(trainData, trainLabels, {
+    epochs: 10,
+    validationSplit: 0.2,
+    callbacks: {
+      onEpochEnd: (epoch, logs) => {
+        console.log(\`Epoch \${epoch + 1}: loss = \${logs.loss.toFixed(4)}, accuracy = \${logs.acc.toFixed(4)}\`);
+      }
+    }
+  });
+  
+  // Guardar modelo
+  await model.save('file://./my-model');
+  console.log('Model saved successfully');
+}
+
+trainModel().catch(console.error);
+"
+
+# Hacer predicciones con modelo guardado
+node -e "
+const tf = require('@tensorflow/tfjs-node');
+
+async function loadAndPredict() {
+  try {
+    // Cargar modelo
+    const model = await tf.loadLayersModel('file://./my-model/model.json');
+    console.log('Model loaded successfully');
+    
+    // Datos de prueba
+    const testData = tf.randomNormal([5, 10]);
+    
+    // Hacer predicciones
+    const predictions = model.predict(testData);
+    const predictionData = await predictions.data();
+    
+    console.log('Predictions:', Array.from(predictionData));
+    
+    // Limpiar memoria
+    testData.dispose();
+    predictions.dispose();
+    
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+loadAndPredict();
+"
+```
+
+#### Computer Vision with TensorFlow.js
+```bash
+# Instalar dependencias para visión por computadora
+npm install @tensorflow-models/mobilenet
+npm install @tensorflow-models/coco-ssd  # Para detección de objetos
+npm install canvas  # Para Node.js image processing
+
+# Clasificación de imágenes con MobileNet
+node -e "
+const tf = require('@tensorflow/tfjs-node');
+const mobilenet = require('@tensorflow-models/mobilenet');
+const fs = require('fs');
+
+async function classifyImage() {
+  try {
+    // Cargar modelo preentrenado
+    console.log('Loading MobileNet model...');
+    const model = await mobilenet.load();
+    console.log('Model loaded');
+    
+    // Para Node.js, necesitarías procesar la imagen
+    // Este es un ejemplo conceptual
+    console.log('Image classification ready');
+    console.log('Model can classify 1000 different object classes');
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+classifyImage();
+"
+
+# Detección de objetos
+node -e "
+const tf = require('@tensorflow/tfjs-node');
+
+async function loadObjectDetectionModel() {
+  try {
+    // Para Node.js necesitarías @tensorflow-models/coco-ssd
+    console.log('Object detection models available:');
+    console.log('- COCO-SSD: Real-time object detection');
+    console.log('- YOLOv5: You Only Look Once v5');
+    console.log('- Custom trained models');
+    
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+loadObjectDetectionModel();
+"
+```
+
+### Natural Language Processing
+
+#### Basic NLP Operations
+```bash
+# Instalar bibliotecas de NLP
+npm install natural  # Natural Language Processing library
+npm install sentiment  # Sentiment analysis
+npm install compromise  # NLP suite
+
+# Análisis de sentimientos
+node -e "
+const sentiment = require('sentiment');
+const Sentiment = new sentiment();
+
+const texts = [
+  'I love this product!',
+  'This is terrible',
+  'It is okay, not great but not bad',
+  'Amazing experience, highly recommended!'
+];
+
+texts.forEach(text => {
+  const result = Sentiment.analyze(text);
+  console.log(\`Text: \${text}\`);
+  console.log(\`Score: \${result.score}, Comparative: \${result.comparative}\`);
+  console.log(\`Positive: \${result.positive.join(', ')}\`);
+  console.log(\`Negative: \${result.negative.join(', ')}\`);
+  console.log('---');
+});
+"
+
+# Procesamiento de texto con Natural
+node -e "
+const natural = require('natural');
+
+const text = 'Natural language processing is fascinating and useful';
+
+// Tokenización
+const tokens = natural.WordTokenizer().tokenize(text);
+console.log('Tokens:', tokens);
+
+// Stemming
+const stemmed = tokens.map(token => natural.PorterStemmer.stem(token));
+console.log('Stemmed:', stemmed);
+
+// Distancia de strings
+const distance = natural.JaroWinklerDistance('hello', 'helo');
+console.log('String similarity:', distance);
+
+// N-gramas
+const nGrams = natural.NGrams.bigrams(tokens);
+console.log('Bigrams:', nGrams);
+"
+
+# Análisis de texto con Compromise
+node -e "
+const nlp = require('compromise');
+
+const text = 'John Smith is a software engineer at Google in California';
+
+const doc = nlp(text);
+
+// Extraer personas
+const people = doc.people().out('array');
+console.log('People:', people);
+
+// Extraer lugares
+const places = doc.places().out('array');
+console.log('Places:', places);
+
+// Extraer organizaciones
+const orgs = doc.organizations().out('array');
+console.log('Organizations:', orgs);
+
+// POS tagging
+console.log('POS Tags:');
+doc.terms().forEach(term => {
+  console.log(\`\${term.text}: \${term.tags.join(', ')}\`);
+});
+"
+```
+
+### API Integration for AI Services
+
+#### OpenAI API Integration
+```bash
+# Instalar cliente de OpenAI
+npm install openai
+
+# Configurar y usar OpenAI API
+node -e "
+const { Configuration, OpenAIApi } = require('openai');
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
+
+async function chatWithGPT() {
+  if (!process.env.OPENAI_API_KEY) {
+    console.log('Please set OPENAI_API_KEY environment variable');
+    return;
+  }
+
+  try {
+    const completion = await openai.createChatCompletion({
+      model: 'gpt-3.5-turbo',
+      messages: [
+        {
+          role: 'user', 
+          content: 'Explain machine learning in simple terms'
+        }
+      ],
+      max_tokens: 150
+    });
+
+    console.log('ChatGPT Response:');
+    console.log(completion.data.choices[0].message.content);
+    
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+  }
+}
+
+chatWithGPT();
+"
+
+# Generar embeddings
+node -e "
+const { Configuration, OpenAIApi } = require('openai');
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+const openai = new OpenAIApi(configuration);
+
+async function generateEmbedding() {
+  if (!process.env.OPENAI_API_KEY) {
+    console.log('Please set OPENAI_API_KEY environment variable');
+    return;
+  }
+
+  try {
+    const response = await openai.createEmbedding({
+      model: 'text-embedding-ada-002',
+      input: 'Machine learning is a subset of artificial intelligence'
+    });
+
+    const embedding = response.data.data[0].embedding;
+    console.log(\`Embedding dimension: \${embedding.length}\`);
+    console.log(\`First 5 values: \${embedding.slice(0, 5).join(', ')}\`);
+    
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+  }
+}
+
+generateEmbedding();
+"
+```
+
+#### Google Cloud AI Integration
+```bash
+# Instalar cliente de Google Cloud
+npm install @google-cloud/vision
+npm install @google-cloud/language
+npm install @google-cloud/translate
+
+# Vision API
+node -e "
+// Requires GOOGLE_APPLICATION_CREDENTIALS environment variable
+// pointing to service account key file
+
+const vision = require('@google-cloud/vision');
+
+async function analyzeImage() {
+  try {
+    const client = new vision.ImageAnnotatorClient();
+    
+    // Analizar imagen desde URL
+    const [result] = await client.labelDetection({
+      image: {
+        source: {
+          imageUri: 'https://example.com/image.jpg'
+        }
+      }
+    });
+    
+    const labels = result.labelAnnotations;
+    console.log('Labels detected:');
+    labels.forEach(label => {
+      console.log(\`- \${label.description}: \${(label.score * 100).toFixed(2)}%\`);
+    });
+    
+  } catch (error) {
+    console.error('Error:', error.message);
+    console.log('Make sure GOOGLE_APPLICATION_CREDENTIALS is set');
+  }
+}
+
+analyzeImage();
+"
+
+# Natural Language API
+node -e "
+const language = require('@google-cloud/language');
+
+async function analyzeText() {
+  try {
+    const client = new language.LanguageServiceClient();
+    
+    const text = 'I love this new AI technology! It is amazing.';
+    
+    // Análisis de sentimiento
+    const [sentiment] = await client.analyzeSentiment({
+      document: {
+        content: text,
+        type: 'PLAIN_TEXT',
+      },
+    });
+    
+    console.log(\`Text: \${text}\`);
+    console.log(\`Sentiment score: \${sentiment.documentSentiment.score}\`);
+    console.log(\`Sentiment magnitude: \${sentiment.documentSentiment.magnitude}\`);
+    
+    // Análisis de entidades
+    const [entities] = await client.analyzeEntities({
+      document: {
+        content: text,
+        type: 'PLAIN_TEXT',
+      },
+    });
+    
+    console.log('Entities:');
+    entities.entities.forEach(entity => {
+      console.log(\`- \${entity.name}: \${entity.type}\`);
+    });
+    
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+analyzeText();
+"
+```
+
+### Data Processing for AI
+
+#### CSV and Data Manipulation
+```bash
+# Instalar bibliotecas para manejo de datos
+npm install csv-parser
+npm install csv-writer
+npm install lodash
+
+# Procesar datos CSV
+node -e "
+const fs = require('fs');
+const csv = require('csv-parser');
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+const _ = require('lodash');
+
+const results = [];
+
+// Leer CSV
+fs.createReadStream('data.csv')
+  .pipe(csv())
+  .on('data', (data) => results.push(data))
+  .on('end', () => {
+    console.log(\`Loaded \${results.length} records\`);
+    
+    // Análisis básico
+    if (results.length > 0) {
+      const keys = Object.keys(results[0]);
+      console.log('Columns:', keys);
+      
+      // Estadísticas básicas para columnas numéricas
+      keys.forEach(key => {
+        const values = results.map(row => parseFloat(row[key])).filter(v => !isNaN(v));
+        if (values.length > 0) {
+          console.log(\`\${key}: min=\${_.min(values)}, max=\${_.max(values)}, mean=\${_.mean(values).toFixed(2)}\`);
+        }
+      });
+      
+      // Filtrar y guardar datos procesados
+      const filtered = results.filter(row => {
+        // Ejemplo: filtrar filas válidas
+        return Object.values(row).every(value => value !== '');
+      });
+      
+      // Escribir CSV procesado
+      const csvWriter = createCsvWriter({
+        path: 'processed_data.csv',
+        header: keys.map(key => ({id: key, title: key}))
+      });
+      
+      csvWriter.writeRecords(filtered)
+        .then(() => console.log(\`Processed data saved to processed_data.csv (\${filtered.length} records)\`));
+    }
+  })
+  .on('error', (error) => {
+    console.log('CSV file not found. Creating sample data...');
+    
+    // Crear datos de ejemplo
+    const sampleData = Array.from({length: 100}, (_, i) => ({
+      id: i + 1,
+      feature1: Math.random() * 100,
+      feature2: Math.random() * 50,
+      target: Math.random() > 0.5 ? 1 : 0
+    }));
+    
+    const csvWriter = createCsvWriter({
+      path: 'data.csv',
+      header: [
+        {id: 'id', title: 'ID'},
+        {id: 'feature1', title: 'Feature1'},
+        {id: 'feature2', title: 'Feature2'},
+        {id: 'target', title: 'Target'}
+      ]
+    });
+    
+    csvWriter.writeRecords(sampleData)
+      .then(() => console.log('Sample data created in data.csv'));
+  });
+"
+```
+
+### Web Scraping for AI Data
+
+#### Puppeteer for Data Collection
+```bash
+# Instalar Puppeteer
+npm install puppeteer
+
+# Web scraping básico
+node -e "
+const puppeteer = require('puppeteer');
+
+async function scrapeData() {
+  const browser = await puppeteer.launch({headless: true});
+  const page = await browser.newPage();
+  
+  try {
+    await page.goto('https://example.com');
+    
+    // Extraer texto de la página
+    const content = await page.evaluate(() => {
+      return {
+        title: document.title,
+        headings: Array.from(document.querySelectorAll('h1, h2, h3')).map(h => h.textContent.trim()),
+        paragraphs: Array.from(document.querySelectorAll('p')).map(p => p.textContent.trim()).filter(text => text.length > 20)
+      };
+    });
+    
+    console.log('Scraped Data:');
+    console.log('Title:', content.title);
+    console.log('Headings:', content.headings);
+    console.log('Paragraphs:', content.paragraphs.length);
+    
+    // Guardar datos
+    const fs = require('fs');
+    fs.writeFileSync('scraped_data.json', JSON.stringify(content, null, 2));
+    console.log('Data saved to scraped_data.json');
+    
+  } catch (error) {
+    console.error('Scraping error:', error.message);
+  } finally {
+    await browser.close();
+  }
+}
+
+scrapeData();
+"
+```
+
+### AI Model Serving
+
+#### Express.js API for AI Models
+```bash
+# Instalar Express y middleware
+npm install express cors helmet morgan
+
+# Crear API para servir modelos AI
+node -e "
+const express = require('express');
+const cors = require('cors');
+const helmet = require('helmet');
+const morgan = require('morgan');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(helmet());
+app.use(cors());
+app.use(morgan('combined'));
+app.use(express.json({ limit: '10mb' }));
+
+// Simular carga de modelo AI
+let model = null;
+const initializeModel = () => {
+  // Aquí cargarías tu modelo real (TensorFlow.js, etc.)
+  model = {
+    predict: (input) => {
+      // Simulación de predicción
+      return {
+        prediction: Math.random() > 0.5 ? 'positive' : 'negative',
+        confidence: Math.random()
+      };
+    }
+  };
+  console.log('AI Model loaded successfully');
+};
+
+// Rutas
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    model_loaded: model !== null,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/predict', (req, res) => {
+  if (!model) {
+    return res.status(503).json({ error: 'Model not loaded' });
+  }
+  
+  try {
+    const { input } = req.body;
+    
+    if (!input) {
+      return res.status(400).json({ error: 'Input data required' });
+    }
+    
+    const result = model.predict(input);
+    
+    res.json({
+      success: true,
+      result: result,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Prediction error:', error);
+    res.status(500).json({ error: 'Prediction failed' });
+  }
+});
+
+app.post('/batch-predict', (req, res) => {
+  if (!model) {
+    return res.status(503).json({ error: 'Model not loaded' });
+  }
+  
+  try {
+    const { inputs } = req.body;
+    
+    if (!Array.isArray(inputs)) {
+      return res.status(400).json({ error: 'Inputs must be an array' });
+    }
+    
+    const results = inputs.map(input => model.predict(input));
+    
+    res.json({
+      success: true,
+      results: results,
+      count: results.length,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Batch prediction error:', error);
+    res.status(500).json({ error: 'Batch prediction failed' });
+  }
+});
+
+// Inicializar modelo y servidor
+initializeModel();
+
+app.listen(PORT, () => {
+  console.log(\`AI API server running on port \${PORT}\`);
+  console.log(\`Health check: http://localhost:\${PORT}/health\`);
+  console.log(\`Prediction endpoint: http://localhost:\${PORT}/predict\`);
+});
+" > ai_api.js
+
+# Ejecutar API
+node ai_api.js &
+
+# Probar API
+sleep 2
+echo "Testing API..."
+curl -X GET http://localhost:3000/health | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+console.log('Health Check:', JSON.stringify(data, null, 2));
+"
+
+curl -X POST http://localhost:3000/predict \
+     -H "Content-Type: application/json" \
+     -d '{"input": "This is a test input"}' | node -e "
+const data = JSON.parse(require('fs').readFileSync(0, 'utf8'));
+console.log('Prediction Result:', JSON.stringify(data, null, 2));
+"
+```
+
+### Automation Scripts for AI/ML
+
+#### Model Training Pipeline
+```bash
+#!/bin/bash
+# Crear pipeline de entrenamiento
+cat > train_pipeline.js << 'EOF'
+const tf = require('@tensorflow/tfjs-node');
+const fs = require('fs');
+
+class MLPipeline {
+  constructor() {
+    this.model = null;
+    this.trainingHistory = null;
+  }
+
+  // Generar datos sintéticos
+  generateData(samples = 1000) {
+    console.log(`Generating ${samples} synthetic data points...`);
+    
+    const features = tf.randomNormal([samples, 5]);
+    const noise = tf.randomNormal([samples, 1], 0, 0.1);
+    const labels = features.sum(1, true).add(noise);
+    
+    return { features, labels };
+  }
+
+  // Crear modelo
+  createModel() {
+    console.log('Creating model architecture...');
+    
+    this.model = tf.sequential({
+      layers: [
+        tf.layers.dense({
+          inputShape: [5],
+          units: 64,
+          activation: 'relu',
+          name: 'hidden1'
+        }),
+        tf.layers.dropout({ rate: 0.2 }),
+        tf.layers.dense({
+          units: 32,
+          activation: 'relu',
+          name: 'hidden2'
+        }),
+        tf.layers.dense({
+          units: 1,
+          name: 'output'
+        })
+      ]
+    });
+
+    this.model.compile({
+      optimizer: tf.train.adam(0.001),
+      loss: 'meanSquaredError',
+      metrics: ['mae']
+    });
+
+    console.log('Model created and compiled');
+    this.model.summary();
+  }
+
+  // Entrenar modelo
+  async trainModel(features, labels, epochs = 50) {
+    console.log(`Training model for ${epochs} epochs...`);
+    
+    const validationSplit = 0.2;
+    
+    this.trainingHistory = await this.model.fit(features, labels, {
+      epochs: epochs,
+      validationSplit: validationSplit,
+      shuffle: true,
+      callbacks: {
+        onEpochEnd: (epoch, logs) => {
+          if (epoch % 10 === 0) {
+            console.log(`Epoch ${epoch + 1}/${epochs}:`);
+            console.log(`  Loss: ${logs.loss.toFixed(4)}`);
+            console.log(`  MAE: ${logs.mae.toFixed(4)}`);
+            console.log(`  Val Loss: ${logs.val_loss.toFixed(4)}`);
+            console.log(`  Val MAE: ${logs.val_mae.toFixed(4)}`);
+          }
+        }
+      }
+    });
+
+    console.log('Training completed');
+  }
+
+  // Evaluar modelo
+  async evaluateModel(features, labels) {
+    console.log('Evaluating model...');
+    
+    const evaluation = this.model.evaluate(features, labels);
+    const [loss, mae] = await Promise.all([
+      evaluation[0].data(),
+      evaluation[1].data()
+    ]);
+
+    console.log(`Evaluation Results:`);
+    console.log(`  Loss: ${loss[0].toFixed(4)}`);
+    console.log(`  MAE: ${mae[0].toFixed(4)}`);
+
+    // Limpiar tensores
+    evaluation.forEach(tensor => tensor.dispose());
+
+    return { loss: loss[0], mae: mae[0] };
+  }
+
+  // Guardar modelo
+  async saveModel(path = './saved_model') {
+    console.log(`Saving model to ${path}...`);
+    await this.model.save(`file://${path}`);
+    
+    // Guardar historial de entrenamiento
+    const historyData = {
+      loss: this.trainingHistory.history.loss,
+      mae: this.trainingHistory.history.mae,
+      val_loss: this.trainingHistory.history.val_loss,
+      val_mae: this.trainingHistory.history.val_mae
+    };
+    
+    fs.writeFileSync(`${path}/training_history.json`, JSON.stringify(historyData, null, 2));
+    console.log('Model and training history saved');
+  }
+
+  // Pipeline completo
+  async runPipeline() {
+    try {
+      // Generar datos
+      const { features, labels } = this.generateData(2000);
+      
+      // Crear modelo
+      this.createModel();
+      
+      // Entrenar
+      await this.trainModel(features, labels, 100);
+      
+      // Evaluar
+      await this.evaluateModel(features, labels);
+      
+      // Guardar
+      await this.saveModel('./ml_model');
+      
+      // Limpiar memoria
+      features.dispose();
+      labels.dispose();
+      
+      console.log('Pipeline completed successfully!');
+      
+    } catch (error) {
+      console.error('Pipeline failed:', error);
+    }
+  }
+}
+
+// Ejecutar pipeline
+const pipeline = new MLPipeline();
+pipeline.runPipeline();
+EOF
+
+# Ejecutar pipeline
+node train_pipeline.js
+```

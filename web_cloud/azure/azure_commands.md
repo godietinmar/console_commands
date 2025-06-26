@@ -111,10 +111,10 @@ az vm resize --resource-group myResourceGroup --name myVM --size Standard_DS3_v2
 ### Extensiones de VM
 ```bash
 # Listar extensiones disponibles
-az vm extension image list --location eastus
+az vm.extension image list --location eastus
 
 # Instalar extensión
-az vm extension set \
+az vm.extension.set \
     --resource-group myResourceGroup \
     --vm-name myVM \
     --name customScript \
@@ -122,23 +122,23 @@ az vm extension set \
     --settings '{"fileUris":["https://example.com/script.sh"],"commandToExecute":"./script.sh"}'
 
 # Listar extensiones de VM
-az vm extension list --resource-group myResourceGroup --vm-name myVM
+az vm.extension list --resource-group myResourceGroup --vm-name myVM
 ```
 
 ### Conexión SSH y RDP
 ```bash
 # Obtener IP pública de VM
-az vm list-ip-addresses --resource-group myResourceGroup --name myVM
+az vm.list-ip-addresses --resource-group myResourceGroup --name myVM
 
 # Conectar por SSH (Linux)
-az vm run-command invoke \
+az vm.run-command invoke \
     --resource-group myResourceGroup \
     --name myVM \
     --command-id RunShellScript \
     --scripts "echo Hello World"
 
 # Habilitar auto-shutdown
-az vm auto-shutdown \
+az vm.auto-shutdown \
     --resource-group myResourceGroup \
     --name myVM \
     --time 1900
@@ -769,85 +769,374 @@ az backup protection backup-now \
     --backup-management-type AzureIaasVM
 ```
 
-## Comandos Útiles Generales
+## Azure AI Services
 
-### Filtros y Consultas
+### Cognitive Services
 ```bash
-# Usar JMESPath para filtrar resultados
-az vm list --query "[?powerState=='VM running'].{Name:name, ResourceGroup:resourceGroup}"
+# Crear Cognitive Services account
+az cognitiveservices account create \
+    --name myCognitiveService \
+    --resource-group myResourceGroup \
+    --kind CognitiveServices \
+    --sku S0 \
+    --location eastus
 
-# Salida en tabla
-az vm list --output table
+# Listar Cognitive Services
+az cognitiveservices account list
 
-# Salida en YAML
-az vm list --output yaml
+# Obtener keys de Cognitive Services
+az cognitiveservices account keys list \
+    --name myCognitiveService \
+    --resource-group myResourceGroup
 
-# Filtrar por tags
-az resource list --tag Environment=Production
+# Mostrar detalles del servicio
+az cognitiveservices account show \
+    --name myCognitiveService \
+    --resource-group myResourceGroup
+
+# Regenerar key
+az cognitiveservices account keys regenerate \
+    --name myCognitiveService \
+    --resource-group myResourceGroup \
+    --key-name key1
 ```
 
-### Comandos de Ayuda
+### Azure OpenAI Service
 ```bash
-# Ayuda general
-az --help
+# Crear Azure OpenAI resource
+az cognitiveservices account create \
+    --name myOpenAI \
+    --resource-group myResourceGroup \
+    --kind OpenAI \
+    --sku S0 \
+    --location eastus
 
-# Ayuda de comando específico
-az vm --help
+# Listar modelos disponibles
+az cognitiveservices account list-models \
+    --name myOpenAI \
+    --resource-group myResourceGroup
 
-# Ayuda de subcomando
-az vm create --help
+# Crear deployment de modelo
+az cognitiveservices account deployment create \
+    --name myOpenAI \
+    --resource-group myResourceGroup \
+    --deployment-name text-davinci-003 \
+    --model-name text-davinci-003 \
+    --model-version "1" \
+    --model-format OpenAI \
+    --scale-settings-scale-type "Standard"
 
-# Encontrar comandos
-az find "virtual machine"
+# Listar deployments
+az cognitiveservices account deployment list \
+    --name myOpenAI \
+    --resource-group myResourceGroup
+
+# Eliminar deployment
+az cognitiveservices account deployment delete \
+    --name myOpenAI \
+    --resource-group myResourceGroup \
+    --deployment-name text-davinci-003
 ```
 
-### Extensiones
+### Computer Vision
 ```bash
-# Listar extensiones instaladas
-az extension list
+# Crear Computer Vision service
+az cognitiveservices account create \
+    --name myComputerVision \
+    --resource-group myResourceGroup \
+    --kind ComputerVision \
+    --sku S1 \
+    --location eastus
 
-# Instalar extensión
-az extension add --name azure-devops
+# Analizar imagen (usando REST API con curl)
+ENDPOINT=$(az cognitiveservices account show --name myComputerVision --resource-group myResourceGroup --query "properties.endpoint" --output tsv)
+KEY=$(az cognitiveservices account keys list --name myComputerVision --resource-group myResourceGroup --query "key1" --output tsv)
 
-# Actualizar extensión
-az extension update --name azure-devops
-
-# Eliminar extensión
-az extension remove --name azure-devops
+curl -H "Ocp-Apim-Subscription-Key: $KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"url":"https://example.com/image.jpg"}' \
+     "$ENDPOINT/vision/v3.2/analyze?visualFeatures=Categories,Description,Faces,Objects,Tags"
 ```
 
-## Scripts de Automatización
+### Speech Services
+```bash
+# Crear Speech service
+az cognitiveservices account create \
+    --name mySpeechService \
+    --resource-group myResourceGroup \
+    --kind SpeechServices \
+    --sku S0 \
+    --location eastus
 
-### Script de Backup de VMs
+# Obtener token de acceso
+ENDPOINT=$(az cognitiveservices account show --name mySpeechService --resource-group myResourceGroup --query "properties.endpoint" --output tsv)
+KEY=$(az cognitiveservices account keys list --name mySpeechService --resource-group myResourceGroup --query "key1" --output tsv)
+
+curl -X POST \
+     -H "Ocp-Apim-Subscription-Key: $KEY" \
+     -H "Content-Type: application/x-www-form-urlencoded" \
+     -d "" \
+     "$ENDPOINT/sts/v1.0/issuetoken"
+```
+
+### Text Analytics
+```bash
+# Crear Text Analytics service
+az cognitiveservices account create \
+    --name myTextAnalytics \
+    --resource-group myResourceGroup \
+    --kind TextAnalytics \
+    --sku S \
+    --location eastus
+
+# Análisis de sentimientos (usando REST API)
+ENDPOINT=$(az cognitiveservices account show --name myTextAnalytics --resource-group myResourceGroup --query "properties.endpoint" --output tsv)
+KEY=$(az cognitiveservices account keys list --name myTextAnalytics --resource-group myResourceGroup --query "key1" --output tsv)
+
+curl -X POST \
+     -H "Ocp-Apim-Subscription-Key: $KEY" \
+     -H "Content-Type: application/json" \
+     -d '{
+       "documents": [
+         {
+           "language": "es",
+           "id": "1",
+           "text": "Este servicio es fantástico"
+         }
+       ]
+     }' \
+     "$ENDPOINT/text/analytics/v3.1/sentiment"
+```
+
+### Translator
+```bash
+# Crear Translator service
+az cognitiveservices account create \
+    --name myTranslator \
+    --resource-group myResourceGroup \
+    --kind TextTranslation \
+    --sku S1 \
+    --location global
+
+# Traducir texto (usando REST API)
+KEY=$(az cognitiveservices account keys list --name myTranslator --resource-group myResourceGroup --query "key1" --output tsv)
+
+curl -X POST \
+     -H "Ocp-Apim-Subscription-Key: $KEY" \
+     -H "Content-Type: application/json" \
+     -d '[{"Text":"Hello World"}]' \
+     "https://api.cognitive.microsofttranslator.com/translate?api-version=3.0&to=es"
+```
+
+### Azure Machine Learning
+```bash
+# Instalar extensión de ML
+az extension add --name ml
+
+# Crear workspace de ML
+az ml workspace create \
+    --name myMLWorkspace \
+    --resource-group myResourceGroup \
+    --location eastus
+
+# Configurar workspace por defecto
+az configure --defaults workspace=myMLWorkspace group=myResourceGroup
+
+# Listar workspaces
+az ml workspace list
+
+# Crear compute instance
+az ml compute create \
+    --name mycompute \
+    --type ComputeInstance \
+    --size Standard_DS3_v2
+
+# Listar compute instances
+az ml compute list
+
+# Crear datastore
+az ml datastore create \
+    --name mydatastore \
+    --type AzureBlobStorage \
+    --account-name mystorageaccount \
+    --container-name mycontainer
+
+# Crear dataset
+az ml dataset create \
+    --name mydataset \
+    --datastore mydatastore \
+    --path path/to/data
+
+# Listar datasets
+az ml dataset list
+
+# Enviar job de entrenamiento
+az ml job create --file train-job.yml
+
+# Listar jobs
+az ml job list
+
+# Mostrar detalles de job
+az ml job show --name job-name
+
+# Crear model
+az ml model create \
+    --name mymodel \
+    --version 1 \
+    --path ./model \
+    --type mlflow_model
+
+# Listar modelos
+az ml model list
+
+# Crear endpoint
+az ml online-endpoint create \
+    --name myendpoint \
+    --auth-mode key
+
+# Deploy modelo a endpoint
+az ml online-deployment create \
+    --name mydeployment \
+    --endpoint myendpoint \
+    --model mymodel:1 \
+    --instance-type Standard_DS3_v2 \
+    --instance-count 1
+
+# Probar endpoint
+az ml online-endpoint invoke \
+    --name myendpoint \
+    --request-file test-data.json
+```
+
+### Azure Bot Service
+```bash
+# Crear Bot
+az bot create \
+    --resource-group myResourceGroup \
+    --name myBot \
+    --kind webapp \
+    --location eastus \
+    --microsoft-app-id app-id \
+    --microsoft-app-password app-password
+
+# Configurar canal de Teams
+az bot msteams create \
+    --resource-group myResourceGroup \
+    --name myBot
+
+# Configurar canal de Slack
+az bot slack create \
+    --resource-group myResourceGroup \
+    --name myBot \
+    --client-id slack-client-id \
+    --client-secret slack-client-secret \
+    --verification-token slack-verification-token
+
+# Listar bots
+az bot list
+
+# Mostrar detalles del bot
+az bot show \
+    --resource-group myResourceGroup \
+    --name myBot
+```
+
+### Custom Vision
+```bash
+# Crear Custom Vision project (requiere SDK)
+# Primero instalar el SDK
+pip install azure-cognitiveservices-vision-customvision
+
+# Script de Python para crear proyecto
+python3 << EOF
+from azure.cognitiveservices.vision.customvision.training import CustomVisionTrainingClient
+from azure.cognitiveservices.vision.customvision.prediction import CustomVisionPredictionClient
+from msrest.authentication import ApiKeyCredentials
+
+# Configurar credenciales
+training_key = "your-training-key"
+prediction_key = "your-prediction-key"
+endpoint = "your-endpoint"
+
+credentials = ApiKeyCredentials(in_headers={"Training-key": training_key})
+trainer = CustomVisionTrainingClient(endpoint, credentials)
+
+# Crear proyecto
+project = trainer.create_project("My Project")
+print(f"Created project: {project.id}")
+EOF
+```
+
+### Form Recognizer
+```bash
+# Crear Form Recognizer service
+az cognitiveservices account create \
+    --name myFormRecognizer \
+    --resource-group myResourceGroup \
+    --kind FormRecognizer \
+    --sku S0 \
+    --location eastus
+
+# Analizar formulario (usando REST API)
+ENDPOINT=$(az cognitiveservices account show --name myFormRecognizer --resource-group myResourceGroup --query "properties.endpoint" --output tsv)
+KEY=$(az cognitiveservices account keys list --name myFormRecognizer --resource-group myResourceGroup --query "key1" --output tsv)
+
+curl -X POST \
+     -H "Ocp-Apim-Subscription-Key: $KEY" \
+     -H "Content-Type: application/json" \
+     -d '{"source":"https://example.com/document.pdf"}' \
+     "$ENDPOINT/formrecognizer/v2.1/layout/analyze"
+```
+
+### Scripts de Automatización para AI
+
+#### Script de Monitoreo de Servicios AI
 ```bash
 #!/bin/bash
-# backup-vms.sh
-RESOURCE_GROUP="myResourceGroup"
-VAULT_NAME="myRecoveryServicesVault"
+# monitor-ai-services.sh
+echo "=== Cognitive Services ==="
+az cognitiveservices account list --output table
 
-for vm in $(az vm list --resource-group $RESOURCE_GROUP --query "[].name" --output tsv); do
-    echo "Backing up VM: $vm"
-    az backup protection backup-now \
-        --resource-group $RESOURCE_GROUP \
-        --vault-name $VAULT_NAME \
-        --container-name $vm \
-        --item-name $vm \
-        --backup-management-type AzureIaasVM
-done
+echo "=== Machine Learning Workspaces ==="
+az ml workspace list --output table
+
+echo "=== Bot Services ==="
+az bot list --output table
 ```
 
-### Script de Monitoreo de Recursos
+#### Script de Configuración AI completa
 ```bash
 #!/bin/bash
-# monitor-resources.sh
-echo "=== Virtual Machines ==="
-az vm list --show-details --output table
+# setup-ai-environment.sh
+RESOURCE_GROUP="myAIResourceGroup"
+LOCATION="eastus"
 
-echo "=== Storage Accounts ==="
-az storage account list --output table
+echo "Creating resource group..."
+az group create --name $RESOURCE_GROUP --location $LOCATION
 
-echo "=== App Services ==="
-az webapp list --output table
+echo "Creating Cognitive Services..."
+az cognitiveservices account create \
+    --name myCognitiveServices \
+    --resource-group $RESOURCE_GROUP \
+    --kind CognitiveServices \
+    --sku S0 \
+    --location $LOCATION
+
+echo "Creating ML Workspace..."
+az ml workspace create \
+    --name myMLWorkspace \
+    --resource-group $RESOURCE_GROUP \
+    --location $LOCATION
+
+echo "Creating OpenAI Service..."
+az cognitiveservices account create \
+    --name myOpenAI \
+    --resource-group $RESOURCE_GROUP \
+    --kind OpenAI \
+    --sku S0 \
+    --location $LOCATION
+
+echo "AI environment setup complete!"
 ```
 
 ---

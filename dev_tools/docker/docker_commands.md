@@ -995,3 +995,707 @@ docker-compose exec db bash
 # Ejecutar en instancia específica (si está escalado)
 docker-compose exec --index=2 web bash
 ```
+
+## Docker for AI/ML Applications
+
+### AI/ML Docker Images
+
+#### TensorFlow Containers
+```bash
+# Ejecutar TensorFlow con Jupyter
+docker run -it --rm \
+    -p 8888:8888 \
+    -v $(pwd):/tf/notebooks \
+    tensorflow/tensorflow:latest-jupyter
+
+# TensorFlow con GPU
+docker run -it --rm --gpus all \
+    -p 8888:8888 \
+    -v $(pwd):/tf/notebooks \
+    tensorflow/tensorflow:latest-gpu-jupyter
+
+# TensorFlow Serving
+docker run -t --rm \
+    -p 8501:8501 \
+    -v $(pwd)/saved_model:/models/my_model \
+    -e MODEL_NAME=my_model \
+    tensorflow/serving
+
+# TensorFlow Lite
+docker run -it --rm \
+    -v $(pwd):/workspace \
+    tensorflow/tensorflow:latest \
+    python -c "
+import tensorflow as tf
+converter = tf.lite.TFLiteConverter.from_saved_model('/workspace/saved_model')
+tflite_model = converter.convert()
+with open('/workspace/model.tflite', 'wb') as f:
+    f.write(tflite_model)
+print('Model converted to TensorFlow Lite')
+"
+```
+
+#### PyTorch Containers
+```bash
+# PyTorch con Jupyter
+docker run -it --rm \
+    -p 8888:8888 \
+    -v $(pwd):/workspace/notebooks \
+    pytorch/pytorch:latest \
+    jupyter lab --ip=0.0.0.0 --port=8888 --allow-root
+
+# PyTorch con GPU
+docker run -it --rm --gpus all \
+    -v $(pwd):/workspace \
+    pytorch/pytorch:latest-cuda \
+    python -c "
+import torch
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'CUDA devices: {torch.cuda.device_count()}')
+"
+
+# Entrenamiento distribuido con PyTorch
+docker run -it --rm --gpus all \
+    -v $(pwd):/workspace \
+    --network host \
+    pytorch/pytorch:latest-cuda \
+    python -m torch.distributed.launch \
+    --nproc_per_node=2 \
+    --nnodes=1 \
+    --node_rank=0 \
+    --master_addr=localhost \
+    --master_port=1234 \
+    train.py
+```
+
+#### Hugging Face Transformers
+```bash
+# Hugging Face Transformers
+docker run -it --rm \
+    -p 8080:8080 \
+    -v $(pwd):/app \
+    huggingface/transformers-pytorch-gpu:latest \
+    python -c "
+from transformers import pipeline
+nlp = pipeline('sentiment-analysis')
+result = nlp('I love this Docker container!')
+print(result)
+"
+
+# Text Generation API
+docker run -d \
+    --name text-generator \
+    -p 8080:80 \
+    --gpus all \
+    huggingface/text-generation-inference:latest \
+    --model-id microsoft/DialoGPT-medium
+```
+
+### Custom AI/ML Dockerfiles
+
+#### Python ML Environment
+```bash
+# Crear Dockerfile para entorno ML
+cat > Dockerfile.ml << 'EOF'
+FROM python:3.9-slim
+
+# Instalar dependencias del sistema
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    software-properties-common \
+    git \
+    && rm -rf /var/lib/apt/lists/*
+
+# Establecer directorio de trabajo
+WORKDIR /app
+
+# Copiar requirements
+COPY requirements.txt .
+
+# Instalar dependencias Python
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código de la aplicación
+COPY . .
+
+# Exponer puerto
+EXPOSE 8000
+
+# Comando por defecto
+CMD ["python", "app.py"]
+EOF
+
+# Crear requirements.txt para ML
+cat > requirements.txt << 'EOF'
+numpy==1.21.0
+pandas==1.3.3
+scikit-learn==1.0.2
+tensorflow==2.8.0
+torch==1.11.0
+transformers==4.18.0
+fastapi==0.75.0
+uvicorn==0.17.6
+jupyter==1.0.0
+matplotlib==3.5.1
+seaborn==0.11.2
+plotly==5.6.0
+streamlit==1.8.1
+opencv-python==4.5.5.64
+pillow==9.0.1
+requests==2.27.1
+aiofiles==0.8.0
+python-multipart==0.0.5
+EOF
+
+# Construir imagen
+docker build -f Dockerfile.ml -t my-ml-app .
+
+# Ejecutar contenedor
+docker run -d \
+    --name ml-app \
+    -p 8000:8000 \
+    -v $(pwd)/data:/app/data \
+    -v $(pwd)/models:/app/models \
+    my-ml-app
+```
+
+#### Jupyter Lab con Extensiones AI
+```bash
+# Dockerfile para Jupyter avanzado
+cat > Dockerfile.jupyter << 'EOF'
+FROM jupyter/scipy-notebook:latest
+
+USER root
+
+# Instalar dependencias adicionales
+RUN apt-get update && apt-get install -y \
+    graphviz \
+    && rm -rf /var/lib/apt/lists/*
+
+USER $NB_UID
+
+# Instalar extensiones de Jupyter
+RUN pip install --no-cache-dir \
+    jupyterlab-git \
+    jupyterlab-lsp \
+    python-lsp-server[all] \
+    jupyterlab_code_formatter \
+    black \
+    isort
+
+# Instalar bibliotecas de ML/AI
+RUN pip install --no-cache-dir \
+    tensorflow \
+    torch \
+    transformers \
+    accelerate \
+    datasets \
+    wandb \
+    mlflow \
+    optuna \
+    xgboost \
+    lightgbm \
+    catboost \
+    shap \
+    lime \
+    eli5
+
+# Habilitar extensiones
+RUN jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
+WORKDIR /home/jovyan/work
+EOF
+
+# Construir y ejecutar
+docker build -f Dockerfile.jupyter -t jupyter-ai .
+
+docker run -d \
+    --name jupyter-ai \
+    -p 8888:8888 \
+    -v $(pwd):/home/jovyan/work \
+    -e JUPYTER_ENABLE_LAB=yes \
+    jupyter-ai
+```
+
+### Model Serving with Docker
+
+#### TensorFlow Serving
+```bash
+# Preparar modelo para serving
+mkdir -p saved_model/1
+
+# Servir modelo con TensorFlow Serving
+docker run -d \
+    --name tf-serving \
+    -p 8501:8501 \
+    -p 8500:8500 \
+    -v $(pwd)/saved_model:/models/my_model \
+    -e MODEL_NAME=my_model \
+    tensorflow/serving
+
+# Probar el modelo servido
+curl -X POST http://localhost:8501/v1/models/my_model:predict \
+     -H "Content-Type: application/json" \
+     -d '{"instances": [[1.0, 2.0, 3.0, 4.0]]}'
+
+# Obtener metadata del modelo
+curl http://localhost:8501/v1/models/my_model/metadata
+```
+
+#### MLflow Model Serving
+```bash
+# MLflow tracking server
+docker run -d \
+    --name mlflow-server \
+    -p 5000:5000 \
+    -v $(pwd)/mlruns:/mlflow/mlruns \
+    --env BACKEND_STORE_URI=sqlite:///mlflow/mlflow.db \
+    --env DEFAULT_ARTIFACT_ROOT=/mlflow/mlruns \
+    python:3.9 \
+    bash -c "pip install mlflow && mlflow server --host 0.0.0.0 --port 5000"
+
+# Servir modelo con MLflow
+docker run -d \
+    --name mlflow-model \
+    -p 1234:1234 \
+    -v $(pwd)/mlruns:/mlruns \
+    python:3.9 \
+    bash -c "
+    pip install mlflow scikit-learn &&
+    mlflow models serve -m /mlruns/0/run_id/artifacts/model -h 0.0.0.0 -p 1234
+    "
+```
+
+#### FastAPI ML API
+```bash
+# Crear API FastAPI para modelo ML
+cat > app.py << 'EOF'
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import joblib
+import numpy as np
+import uvicorn
+from typing import List
+
+app = FastAPI(title="ML Model API", version="1.0.0")
+
+# Cargar modelo (ejemplo con joblib)
+try:
+    model = joblib.load("model.pkl")
+    print("Model loaded successfully")
+except Exception as e:
+    print(f"Error loading model: {e}")
+    model = None
+
+class PredictionRequest(BaseModel):
+    features: List[float]
+
+class PredictionResponse(BaseModel):
+    prediction: float
+    probability: float = None
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "model_loaded": model is not None
+    }
+
+@app.post("/predict", response_model=PredictionResponse)
+async def predict(request: PredictionRequest):
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    try:
+        features = np.array(request.features).reshape(1, -1)
+        prediction = model.predict(features)[0]
+        
+        # Si el modelo soporta probabilidades
+        probability = None
+        if hasattr(model, 'predict_proba'):
+            probability = model.predict_proba(features)[0].max()
+        
+        return PredictionResponse(
+            prediction=float(prediction),
+            probability=float(probability) if probability else None
+        )
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@app.post("/batch-predict")
+async def batch_predict(requests: List[PredictionRequest]):
+    if model is None:
+        raise HTTPException(status_code=503, detail="Model not loaded")
+    
+    try:
+        features_list = [req.features for req in requests]
+        features_array = np.array(features_list)
+        predictions = model.predict(features_array)
+        
+        return {
+            "predictions": predictions.tolist(),
+            "count": len(predictions)
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+EOF
+
+# Dockerfile para FastAPI ML API
+cat > Dockerfile.fastapi << 'EOF'
+FROM python:3.9-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+COPY model.pkl .
+
+EXPOSE 8000
+
+CMD ["python", "app.py"]
+EOF
+
+# Construir y ejecutar
+docker build -f Dockerfile.fastapi -t ml-api .
+docker run -d --name ml-api -p 8000:8000 ml-api
+```
+
+### AI/ML Docker Compose Stacks
+
+#### Full ML Pipeline Stack
+```bash
+# Crear docker-compose.yml para stack ML completo
+cat > docker-compose.ml.yml << 'EOF'
+version: '3.8'
+
+services:
+  # Jupyter Lab para desarrollo
+  jupyter:
+    image: jupyter/tensorflow-notebook:latest
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./data:/home/jovyan/work/data
+      - ./models:/home/jovyan/work/models
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+    networks:
+      - ml-network
+
+  # MLflow tracking server
+  mlflow:
+    image: python:3.9
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlflow/mlruns
+      - ./mlflow.db:/mlflow/mlflow.db
+    command: >
+      bash -c "
+      pip install mlflow &&
+      mlflow server 
+        --backend-store-uri sqlite:///mlflow/mlflow.db 
+        --default-artifact-root /mlflow/mlruns 
+        --host 0.0.0.0 
+        --port 5000
+      "
+    networks:
+      - ml-network
+
+  # Model serving API
+  model-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./models:/app/models
+    environment:
+      - MODEL_PATH=/app/models/model.pkl
+    depends_on:
+      - mlflow
+    networks:
+      - ml-network
+
+  # Redis para caché
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - ml-network
+
+  # PostgreSQL para metadatos
+  postgres:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: mlops
+      POSTGRES_USER: mluser
+      POSTGRES_PASSWORD: mlpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - ml-network
+
+  # Grafana para monitoreo
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    networks:
+      - ml-network
+
+  # Prometheus para métricas
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - ml-network
+
+volumes:
+  redis_data:
+  postgres_data:
+  grafana_data:
+  prometheus_data:
+
+networks:
+  ml-network:
+    driver: bridge
+EOF
+
+# Iniciar stack completo
+docker-compose -f docker-compose.ml.yml up -d
+
+# Ver logs
+docker-compose -f docker-compose.ml.yml logs -f
+
+# Escalar servicio de API
+docker-compose -f docker-compose.ml.yml up -d --scale model-api=3
+```
+
+### GPU Support for AI/ML
+
+#### NVIDIA Docker for AI
+```bash
+# Verificar soporte GPU
+docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
+
+# TensorFlow con GPU
+docker run -it --rm --gpus all \
+    -v $(pwd):/workspace \
+    tensorflow/tensorflow:latest-gpu \
+    python -c "
+import tensorflow as tf
+print('GPU Available:', tf.test.is_gpu_available())
+print('GPU Devices:', tf.config.list_physical_devices('GPU'))
+"
+
+# PyTorch con GPU
+docker run -it --rm --gpus all \
+    -v $(pwd):/workspace \
+    pytorch/pytorch:latest-cuda \
+    python -c "
+import torch
+print('CUDA Available:', torch.cuda.is_available())
+print('GPU Count:', torch.cuda.device_count())
+print('Current GPU:', torch.cuda.current_device())
+"
+
+# Entrenamiento distribuido multi-GPU
+docker run -it --rm --gpus all \
+    -v $(pwd):/workspace \
+    --shm-size=1g \
+    --ipc=host \
+    pytorch/pytorch:latest-cuda \
+    python -m torch.distributed.launch \
+    --nproc_per_node=$(nvidia-smi -L | wc -l) \
+    train_distributed.py
+```
+
+### AI/ML Monitoring and Logging
+
+#### Containerized Model Monitoring
+```bash
+# Prometheus config para monitoreo ML
+cat > prometheus.yml << 'EOF'
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'ml-api'
+    static_configs:
+      - targets: ['model-api:8000']
+    metrics_path: /metrics
+    scrape_interval: 5s
+
+  - job_name: 'mlflow'
+    static_configs:
+      - targets: ['mlflow:5000']
+    scrape_interval: 30s
+EOF
+
+# Agregar métricas a FastAPI
+cat >> app.py << 'EOF'
+
+from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
+import time
+
+# Métricas Prometheus
+prediction_counter = Counter('ml_predictions_total', 'Total predictions made')
+prediction_histogram = Histogram('ml_prediction_duration_seconds', 'Time spent on predictions')
+error_counter = Counter('ml_prediction_errors_total', 'Total prediction errors')
+
+@app.middleware("http")
+async def add_process_time_header(request, call_next):
+    start_time = time.time()
+    response = await call_next(request)
+    process_time = time.time() - start_time
+    response.headers["X-Process-Time"] = str(process_time)
+    return response
+
+@app.get("/metrics")
+async def get_metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+EOF
+
+echo "AI/ML Docker configuration completed!"
+```
+
+### Automation Scripts for AI/ML Docker
+
+#### Model Training Pipeline Script
+```bash
+#!/bin/bash
+# train_model_docker.sh
+cat > train_model_docker.sh << 'EOF'
+#!/bin/bash
+
+set -e
+
+echo "Starting ML training pipeline with Docker..."
+
+# Variables
+MODEL_NAME=${1:-"my_model"}
+DATA_PATH=${2:-"./data"}
+OUTPUT_PATH=${3:-"./models"}
+
+# Crear directorios si no existen
+mkdir -p $DATA_PATH $OUTPUT_PATH
+
+# Generar datos sintéticos si no existen
+if [ ! -f "$DATA_PATH/train.csv" ]; then
+    echo "Generating synthetic training data..."
+    docker run --rm \
+        -v $(pwd)/$DATA_PATH:/data \
+        python:3.9 \
+        python -c "
+import pandas as pd
+import numpy as np
+
+# Generar datos sintéticos
+np.random.seed(42)
+X = np.random.randn(1000, 5)
+y = (X.sum(axis=1) + np.random.randn(1000) * 0.1) > 0
+
+df = pd.DataFrame(X, columns=[f'feature_{i}' for i in range(5)])
+df['target'] = y.astype(int)
+
+df.to_csv('/data/train.csv', index=False)
+print(f'Generated {len(df)} training samples')
+"
+fi
+
+# Entrenar modelo
+echo "Training model: $MODEL_NAME"
+docker run --rm \
+    -v $(pwd)/$DATA_PATH:/data \
+    -v $(pwd)/$OUTPUT_PATH:/models \
+    python:3.9 \
+    bash -c "
+pip install pandas scikit-learn joblib &&
+python -c \"
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+import joblib
+
+# Cargar datos
+df = pd.read_csv('/data/train.csv')
+X = df.drop('target', axis=1)
+y = df['target']
+
+# Dividir datos
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Entrenar modelo
+model = RandomForestClassifier(n_estimators=100, random_state=42)
+model.fit(X_train, y_train)
+
+# Evaluar
+train_acc = accuracy_score(y_train, model.predict(X_train))
+test_acc = accuracy_score(y_test, model.predict(X_test))
+
+print(f'Train Accuracy: {train_acc:.3f}')
+print(f'Test Accuracy: {test_acc:.3f}')
+
+# Guardar modelo
+joblib.dump(model, '/models/${MODEL_NAME}.pkl')
+print('Model saved successfully')
+\"
+"
+
+# Validar modelo guardado
+echo "Validating saved model..."
+docker run --rm \
+    -v $(pwd)/$OUTPUT_PATH:/models \
+    python:3.9 \
+    bash -c "
+pip install joblib numpy &&
+python -c \"
+import joblib
+import numpy as np
+
+# Cargar modelo
+model = joblib.load('/models/${MODEL_NAME}.pkl')
+print('Model loaded successfully')
+
+# Hacer predicción de prueba
+test_input = np.random.randn(1, 5)
+prediction = model.predict(test_input)
+print(f'Test prediction: {prediction[0]}')
+\"
+"
+
+echo "Training pipeline completed successfully!"
+echo "Model saved to: $OUTPUT_PATH/${MODEL_NAME}.pkl"
+EOF
+
+chmod +x train_model_docker.sh
+
+# Ejecutar pipeline
+./train_model_docker.sh my_model ./data ./models
+```

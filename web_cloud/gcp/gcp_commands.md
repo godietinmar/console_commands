@@ -928,3 +928,431 @@ gcloud sql instances list
 - [Referencia de comandos gcloud](https://cloud.google.com/sdk/gcloud/reference)
 - [Google Cloud CLI GitHub Repository](https://github.com/GoogleCloudPlatform/cloud-sdk-docker)
 - [Ejemplos y tutoriales de GCP](https://cloud.google.com/docs/tutorials)
+
+## Google Cloud AI/ML Services
+
+### Vertex AI
+```bash
+# Habilitar Vertex AI API
+gcloud services enable aiplatform.googleapis.com
+
+# Crear dataset
+gcloud ai datasets create \
+    --display-name=my-dataset \
+    --metadata-schema-uri=gs://google-cloud-aiplatform/schema/dataset/metadata/image_1.0.0.yaml \
+    --region=us-central1
+
+# Listar datasets
+gcloud ai datasets list --region=us-central1
+
+# Crear training job
+gcloud ai custom-jobs create \
+    --region=us-central1 \
+    --display-name=my-training-job \
+    --config=training-config.yaml
+
+# Listar training jobs
+gcloud ai custom-jobs list --region=us-central1
+
+# Crear modelo
+gcloud ai models upload \
+    --region=us-central1 \
+    --display-name=my-model \
+    --container-image-uri=gcr.io/my-project/my-model:latest
+
+# Deploy modelo a endpoint
+gcloud ai endpoints create \
+    --region=us-central1 \
+    --display-name=my-endpoint
+
+gcloud ai endpoints deploy-model ENDPOINT_ID \
+    --region=us-central1 \
+    --model=MODEL_ID \
+    --display-name=my-deployment \
+    --machine-type=n1-standard-4
+
+# Hacer predicción
+gcloud ai endpoints predict ENDPOINT_ID \
+    --region=us-central1 \
+    --json-request=prediction-input.json
+
+# Listar modelos
+gcloud ai models list --region=us-central1
+
+# Listar endpoints
+gcloud ai endpoints list --region=us-central1
+```
+
+### AutoML
+```bash
+# Crear dataset de AutoML Vision
+gcloud ai datasets create \
+    --display-name=automl-vision-dataset \
+    --metadata-schema-uri=gs://google-cloud-aiplatform/schema/dataset/metadata/image_1.0.0.yaml \
+    --region=us-central1
+
+# Importar datos a dataset
+gcloud ai datasets import-data DATASET_ID \
+    --region=us-central1 \
+    --import-schema-uri=gs://google-cloud-aiplatform/schema/dataset/ioformat/image_classification_single_label_io_format_1.0.0.yaml \
+    --data-source-uris=gs://my-bucket/training-data.csv
+
+# Entrenar modelo AutoML
+gcloud ai training-pipelines create \
+    --region=us-central1 \
+    --display-name=automl-training \
+    --training-task-definition=gs://google-cloud-aiplatform/schema/trainingjob/definition/automl_image_classification_1.0.0.yaml \
+    --training-task-inputs-file=automl-config.json
+
+# Crear dataset de AutoML Tables
+gcloud ai datasets create \
+    --display-name=automl-tables-dataset \
+    --metadata-schema-uri=gs://google-cloud-aiplatform/schema/dataset/metadata/tabular_1.0.0.yaml \
+    --region=us-central1
+```
+
+### Vision AI
+```bash
+# Detectar etiquetas en imagen
+gcloud ml vision detect-labels gs://my-bucket/image.jpg
+
+# Detectar texto en imagen
+gcloud ml vision detect-text gs://my-bucket/document.jpg
+
+# Detectar caras
+gcloud ml vision detect-faces gs://my-bucket/people.jpg
+
+# Detectar objetos
+gcloud ml vision detect-objects gs://my-bucket/scene.jpg
+
+# Análisis de imagen completo
+gcloud ml vision detect-labels,detect-text,detect-faces gs://my-bucket/image.jpg
+
+# Detectar contenido explícito
+gcloud ml vision detect-safe-search gs://my-bucket/image.jpg
+
+# Detectar puntos de referencia
+gcloud ml vision detect-landmarks gs://my-bucket/landmark.jpg
+
+# OCR con Document AI
+gcloud documentai processors process \
+    --processor=PROCESSOR_ID \
+    --location=us \
+    --input-mime-type=application/pdf \
+    --raw-document-file-path=document.pdf
+```
+
+### Natural Language AI
+```bash
+# Analizar sentimiento
+gcloud ml language analyze-sentiment --content="I love this product!"
+
+# Detectar entidades
+gcloud ml language analyze-entities --content="Google Cloud is based in California"
+
+# Análisis de sintaxis
+gcloud ml language analyze-syntax --content="The quick brown fox jumps over the lazy dog"
+
+# Clasificar texto
+gcloud ml language classify-text --content="This is a technology article about machine learning"
+
+# Análisis desde archivo
+gcloud ml language analyze-sentiment --content-file=review.txt
+
+# Análisis en lote
+gcloud ml language analyze-sentiment \
+    --content="First review text" \
+    --content="Second review text"
+```
+
+### Speech-to-Text
+```bash
+# Transcribir audio
+gcloud ml speech recognize gs://my-bucket/audio.wav \
+    --language-code=en-US
+
+# Transcripción con configuración avanzada
+gcloud ml speech recognize gs://my-bucket/audio.wav \
+    --language-code=en-US \
+    --enable-automatic-punctuation \
+    --enable-word-time-offsets \
+    --model=latest_long
+
+# Transcripción de audio largo (asíncrona)
+gcloud ml speech recognize-long-running gs://my-bucket/long-audio.wav \
+    --language-code=en-US \
+    --async
+
+# Obtener resultado de operación asíncrona
+gcloud ml speech operations describe OPERATION_ID
+
+# Transcripción en tiempo real
+gcloud ml speech recognize-streaming \
+    --language-code=en-US \
+    --sample-rate=16000 \
+    --encoding=LINEAR16
+```
+
+### Text-to-Speech
+```bash
+# Sintetizar voz
+gcloud ml text-to-speech synthesize \
+    --text="Hello, this is Google Cloud Text-to-Speech" \
+    --output-file=output.mp3 \
+    --voice-name=en-US-Wavenet-D
+
+# Listar voces disponibles
+gcloud ml text-to-speech voices list
+
+# Sintetizar con SSML
+gcloud ml text-to-speech synthesize \
+    --ssml='<speak>Hello <break time="2s"/> World!</speak>' \
+    --output-file=ssml-output.mp3 \
+    --voice-name=en-US-Neural2-F
+
+# Sintetizar en diferentes idiomas
+gcloud ml text-to-speech synthesize \
+    --text="Hola, ¿cómo estás?" \
+    --output-file=spanish.mp3 \
+    --voice-name=es-ES-Neural2-A \
+    --language-code=es-ES
+```
+
+### Translation AI
+```bash
+# Traducir texto
+gcloud ml translate detect-language "Hello World"
+
+# Traducir con idiomas específicos
+gcloud ml translate translate "Hello World" \
+    --source-language=en \
+    --target-language=es
+
+# Traducir múltiples textos
+gcloud ml translate translate \
+    "Hello" "Goodbye" "Thank you" \
+    --target-language=fr
+
+# Listar idiomas soportados
+gcloud ml translate languages list
+
+# Traducir documento
+gcloud ml translate translate-document \
+    --source-file=document.txt \
+    --target-language=es \
+    --output-file=documento.txt
+```
+
+### Video Intelligence AI
+```bash
+# Analizar video
+gcloud ml video-intelligence detect-labels gs://my-bucket/video.mp4
+
+# Detectar cambios de escena
+gcloud ml video-intelligence detect-shots gs://my-bucket/video.mp4
+
+# Detectar contenido explícito en video
+gcloud ml video-intelligence detect-explicit-content gs://my-bucket/video.mp4
+
+# Transcribir audio de video
+gcloud ml video-intelligence transcribe-speech gs://my-bucket/video.mp4 \
+    --language-code=en-US
+
+# Detectar texto en video
+gcloud ml video-intelligence detect-text gs://my-bucket/video.mp4
+
+# Análisis completo de video
+gcloud ml video-intelligence detect-labels,detect-shots,transcribe-speech \
+    gs://my-bucket/video.mp4 \
+    --language-code=en-US \
+    --async
+```
+
+### BigQuery ML
+```bash
+# Crear modelo de ML en BigQuery
+bq query --use_legacy_sql=false '
+CREATE MODEL `my_project.my_dataset.my_model`
+OPTIONS(model_type="linear_reg") AS
+SELECT
+  feature1,
+  feature2,
+  target
+FROM
+  `my_project.my_dataset.training_data`'
+
+# Evaluar modelo
+bq query --use_legacy_sql=false '
+SELECT
+  *
+FROM
+  ML.EVALUATE(MODEL `my_project.my_dataset.my_model`,
+    (SELECT * FROM `my_project.my_dataset.test_data`))'
+
+# Hacer predicciones
+bq query --use_legacy_sql=false '
+SELECT
+  *
+FROM
+  ML.PREDICT(MODEL `my_project.my_dataset.my_model`,
+    (SELECT * FROM `my_project.my_dataset.new_data`))'
+
+# Listar modelos de ML
+bq ls --format=prettyjson my_dataset
+```
+
+### AI Platform Notebooks
+```bash
+# Crear instancia de notebook
+gcloud notebooks instances create my-notebook \
+    --vm-image-project=deeplearning-platform-release \
+    --vm-image-family=tf2-latest-gpu \
+    --machine-type=n1-standard-4 \
+    --location=us-central1-b
+
+# Listar instancias de notebook
+gcloud notebooks instances list
+
+# Iniciar instancia
+gcloud notebooks instances start my-notebook \
+    --location=us-central1-b
+
+# Detener instancia
+gcloud notebooks instances stop my-notebook \
+    --location=us-central1-b
+
+# Eliminar instancia
+gcloud notebooks instances delete my-notebook \
+    --location=us-central1-b
+```
+
+### Dialogflow
+```bash
+# Crear agente
+gcloud dialogflow agents create \
+    --display-name="My Agent" \
+    --default-language-code=en \
+    --time-zone="America/New_York"
+
+# Listar agentes
+gcloud dialogflow agents list
+
+# Crear intent
+gcloud dialogflow intents create \
+    --agent=AGENT_ID \
+    --display-name="greeting" \
+    --training-phrases="Hello,Hi,Good morning"
+
+# Entrenar agente
+gcloud dialogflow agents train AGENT_ID
+
+# Detectar intent
+gcloud dialogflow detect-intent \
+    --agent=AGENT_ID \
+    --session-id=test-session \
+    --query-text="Hello there"
+```
+
+### Firebase ML
+```bash
+# Configurar Firebase CLI
+npm install -g firebase-tools
+firebase login
+
+# Inicializar proyecto Firebase ML
+firebase init ml
+
+# Deploy modelo personalizado
+firebase ml:deploy my-model \
+    --model-file=model.tflite
+
+# Listar modelos
+firebase ml:list
+
+# Eliminar modelo
+firebase ml:delete my-model
+```
+
+### Scripts de Automatización para AI/ML
+
+#### Script de Análisis de Imágenes en Lote
+```bash
+#!/bin/bash
+# batch-image-analysis.sh
+BUCKET="my-images-bucket"
+PREFIX="uploads/"
+
+# Analizar todas las imágenes en el bucket
+gsutil ls gs://$BUCKET/$PREFIX*.jpg | while read -r image; do
+    echo "Analyzing image: $image"
+    
+    # Detectar etiquetas
+    gcloud ml vision detect-labels "$image" > "${image##*/}-labels.json"
+    
+    # Detectar texto
+    gcloud ml vision detect-text "$image" > "${image##*/}-text.json"
+    
+    echo "Results saved for $image"
+done
+```
+
+#### Script de Transcripción Masiva
+```bash
+#!/bin/bash
+# batch-transcription.sh
+BUCKET="my-audio-bucket"
+
+# Transcribir todos los archivos de audio
+gsutil ls gs://$BUCKET/*.wav | while read -r audio; do
+    echo "Transcribing: $audio"
+    
+    gcloud ml speech recognize "$audio" \
+        --language-code=en-US \
+        --enable-automatic-punctuation > "${audio##*/}-transcript.json"
+    
+    echo "Transcription completed for $audio"
+done
+```
+
+#### Script de Monitoreo de ML
+```bash
+#!/bin/bash
+# monitor-ml-services.sh
+echo "=== Vertex AI Models ==="
+gcloud ai models list --region=us-central1
+
+echo "=== Vertex AI Endpoints ==="
+gcloud ai endpoints list --region=us-central1
+
+echo "=== AI Platform Notebooks ==="
+gcloud notebooks instances list
+
+echo "=== BigQuery ML Models ==="
+bq ls --format=table my_ml_dataset
+```
+
+#### Script de Limpieza de Recursos ML
+```bash
+#!/bin/bash
+# cleanup-ml-resources.sh
+REGION="us-central1"
+
+echo "Cleaning up Vertex AI resources..."
+
+# Eliminar endpoints sin tráfico
+gcloud ai endpoints list --region=$REGION --format="value(name)" | while read -r endpoint; do
+    TRAFFIC=$(gcloud ai endpoints describe $endpoint --region=$REGION --format="value(trafficSplit)" 2>/dev/null)
+    if [[ -z "$TRAFFIC" ]]; then
+        echo "Deleting unused endpoint: $endpoint"
+        gcloud ai endpoints delete $endpoint --region=$REGION --quiet
+    fi
+done
+
+# Detener notebooks inactivos
+gcloud notebooks instances list --format="value(name,state)" | grep STOPPED | while read -r notebook state; do
+    echo "Found stopped notebook: $notebook"
+    # Opcional: eliminar notebooks detenidos por más de X días
+done
+
+echo "Cleanup completed!"
+```
